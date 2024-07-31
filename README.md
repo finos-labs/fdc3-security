@@ -119,7 +119,7 @@ This will build an ES6 module in the `dist` directory.
 
 ### Running The Demos
 
-Example javascript code is included in this project in the `/javascript/demo` directory. This includes a simple example of two FDC3 apps communicating with each other using the FDC3 Security module:
+Example javascript code is included in this project in the `/javascript/fdc3-security/demo` directory. This includes a simple example of two FDC3 apps communicating with each other using the FDC3 Security module:
 
 - `sp1`: Listens for the `SecretComms` intent to be raised, returning a Private Channel back to raisers and then broadcasting encrypted messages on that channel.
 - `sp2`: Raises the `SecretComms` intent, listens to the private channel and outputs messages in the browser window that it receives.
@@ -131,14 +131,23 @@ In order to try this out:
 ```
 npm install
 npm run dev
-``
+```
 
-From the `javascript/demo` directory.  This starts a server at `localhost:8095` which serves the demo applications.
+From the `javascript/fdc-security` directory. This starts a server at `localhost:8095` which serves the demo applications.
 
-2. Install the `javascript/demo/appd.json` directory into your own desktop agent.
+2. Install the `javascript/fdc3-security/demo/appd.json` directory into your own desktop agent.
 
 3. Start the sp2 app and press the button.
 
+### Configuring The Decorator
+
+As described above, the FDC3 Security module is a decorator for the FDC3 DesktopAgent API. In order to use it, you need to import the module and then wrap the `DesktopAgent` with the `SecuredDesktopAgent` like so:
+
+```javascript
+const securedDa = new SecuredDesktopAgent(window.fdc3, signingFunction, checkingFunction, wrappingFunction, unwrappingFunction)
+```
+
+TODO: Complete this part.
 
 ## Roadmap
 
@@ -154,6 +163,17 @@ From the `javascript/demo` directory.  This starts a server at `localhost:8095` 
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
 
+## Development Envrionment
+
+It's expected that if you contribute functionality to this project, it is well tested. Please implement cucumber tests to make sure your code is well covered. You can run the `javascript/fdc3-security` tests with:
+
+```
+npm run test
+```
+
+Code coverage is produced in the `coverage` directory and an HTML report is generated in `coverage/lcov-report/index.html`.
+Cucumber test results are produced in the `cucumber-report.html` file.
+
 ## License
 
 Copyright 2024 FINOS
@@ -161,4 +181,3 @@ Copyright 2024 FINOS
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
-```
