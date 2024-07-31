@@ -2,40 +2,16 @@ import { DataTable, Given, Then, When } from '@cucumber/cucumber'
 import { expect } from 'expect';
 import { doesRowMatch, handleResolve, matchData } from '../support/matching';
 import { CustomWorld } from '../world/index';
-import { SecuredDesktopAgent } from '../../src/SecuredDesktopAgent';
 import { dummyCheck, dummySign, dummyUnwrapKey, dummyWrapKey } from '../support/crypto/DummyCrypto';
 import { DesktopAgentSpy } from '../support/DesktopAgentSpy';
 import { ClientSideImplementation, Resolver } from '../../src/ClientSideImplementation';
+import { UnopinionatedDesktopAgent } from '../../src/delegates/UnopinionatedDesktopAgent';
 
 export const CHANNEL_STATE = 'CHANNEL_STATE'
 
-// class SimpleIntentResolver implements IntentResolver {
-
-//     cw: CustomWorld
-
-//     constructor(cw: CustomWorld) {
-//         this.cw = cw;
-//     }
-
-//     async intentChosen(ir: IntentResult): Promise<IntentResult> {
-//         this.cw.props['intent-result'] = ir
-//         return ir
-//     }
-
-//     async chooseIntent(appIntents: AppIntent[]): Promise<SingleAppIntent> {
-//         const out = {
-//             intent: appIntents[0].intent,
-//             chosenApp: appIntents[0].apps[0]
-//         }
-
-//         this.cw.props['intent-resolution'] = out
-//         return out
-//     }
-// }
-
 Given('A Signing Desktop Agent in {string} wrapping {string} with Dummy Signing Middleware', async function (this: CustomWorld, field: string, daField: string) {
     const da = this.props[daField]
-    const signingDA = new SecuredDesktopAgent(da, dummySign, dummyCheck, dummyWrapKey, dummyUnwrapKey)
+    const signingDA = new UnopinionatedDesktopAgent(da, dummySign, dummyCheck, dummyWrapKey, dummyUnwrapKey)
 
     this.props[field] = signingDA
     this.props['result'] = null
@@ -48,7 +24,7 @@ Given('A Signing Desktop Agent in {string} wrapping {string} with Real Middlewar
     const eprivKey: CryptoKey = handleResolve(epriv, this)
     const resolverObj: Resolver = handleResolve(resolver, this)
 
-    const signingDA = new SecuredDesktopAgent(da,
+    const signingDA = new UnopinionatedDesktopAgent(da,
         csi.initSigner(sprivKey, publicUrl),
         csi.initChecker(resolverObj),
         csi.initWrapKey(resolverObj),

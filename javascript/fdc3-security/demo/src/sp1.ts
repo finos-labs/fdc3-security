@@ -1,7 +1,5 @@
-import { Context, DesktopAgent, fdc3Ready } from '@finos/fdc3'
-import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, WRAPPING_ALGORITHM_KEY_PARAMS, ClientSideImplementation } from 'fdc3-security'
-import { SYMMETRIC_KEY_REQUEST_CONTEXT } from 'fdc3-security/src/encryption/SymmetricKeyContext'
-import { ContextMetadataWithAuthenticity } from 'fdc3-security/src/signing/SigningSupport'
+import { Context, ContextMetadata, fdc3Ready } from '@finos/fdc3'
+import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, WRAPPING_ALGORITHM_KEY_PARAMS, ClientSideImplementation, SYMMETRIC_KEY_REQUEST_CONTEXT, ContextMetadataWithAuthenticity } from '../../src/index'
 
 
 let signingPrivateKey: CryptoKey | null = null
@@ -12,12 +10,12 @@ const resolver: Resolver = (u: string) => {
         .then(r => r.json())
 }
 
-async function setupKeys(j: JsonWebKey[]): Promise<DesktopAgent> {
+async function setupKeys(j: JsonWebKey[]): Promise<void> {
     signingPrivateKey = await crypto.subtle.importKey("jwk", j[0], SIGNING_ALGORITHM_DETAILS, true, ["sign"])
     unwrappingPrivateKey = await crypto.subtle.importKey("jwk", j[1], WRAPPING_ALGORITHM_KEY_PARAMS, true, ["unwrapKey"])
 }
 
-fdc3Ready.then(() => {
+fdc3Ready().then(() => {
 
     fetch('/sp1-private-key')
         .then(r => r.json())
@@ -28,14 +26,13 @@ fdc3Ready.then(() => {
 
             return new SecuredDesktopAgent(c,
                 csi.initSigner(signingPrivateKey as CryptoKey, "/sp1-public-key"),
-                csi.initChecker(resolver),
-                csi.initWrapKey(resolver),
-                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp1-public-key"))
+                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp1-public-key"),
+                resolver)
 
         }).then(async efdc3 => {
             console.log("in promise")
 
-            efdc3.addIntentListener("SecretComms", async (context, metadata) => {
+            efdc3.addIntentListener("SecretComms", async (context: Context, metadata: ContextMetadata) => {
                 const log = document.getElementById("log");
                 const msg1 = document.createElement("pre");
                 msg1.textContent = `Received: ${JSON.stringify(context)} and meta ${JSON.stringify(metadata)}`
@@ -54,7 +51,7 @@ fdc3Ready.then(() => {
 
                     var broadcastCount = 0;
 
-                    pc.addContextListener("demo.counter", (ctx, meta) => {
+                    pc.addContextListener("demo.counter", (ctx: Context, meta: ContextMetadata) => {
                         const msg2 = document.createElement("pre");
                         msg2.textContent = `Received ${JSON.stringify(ctx)} with meta ${JSON.stringify(meta)}`
                         log?.appendChild(msg2)
@@ -105,4 +102,5 @@ fdc3Ready.then(() => {
             })
 
 
-        });
+        })
+})

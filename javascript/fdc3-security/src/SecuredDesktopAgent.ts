@@ -1,81 +1,28 @@
-import { DesktopAgent, Context, IntentResolution, Listener, ContextHandler, Channel, IntentHandler, PrivateChannel, IntentResult } from "@finos/fdc3";
-import { AbstractDesktopAgentDelegate } from "./delegates/AbstractDesktopAgentDelegate";
-import { SigningChannelDelegate } from "./signing/SigningChannelDelegate";
-import { Check, Sign, signedContext, signingContextHandler, signingIntentHandler } from "./signing/SigningSupport";
-import { EncryptingPrivateChannel, UnwrapKey, WrapKey } from "./encryption/EncryptionSupport";
-import { EncryptingChannelDelegate } from "./encryption/EncryptingChannelDelegate";
+import { DesktopAgent } from "@finos/fdc3";
+import { Sign } from "./signing/SigningSupport";
+import { UnwrapKey } from "./encryption/EncryptionSupport";
+import { UnopinionatedDesktopAgent } from "./delegates/UnopinionatedDesktopAgent";
+import { ClientSideImplementation, Resolver } from "./ClientSideImplementation";
 
 /**
- * This implementation adds signing functionality to any broadcast context
- * and allows for the checking of signatures on items returned.
+ * This is intended to be the entry point for setting up the SecuredDesktopAgent, 
+ * which enforces the use of some of the ClientSideImplementation's functions.
  */
-export class SecuredDesktopAgent extends AbstractDesktopAgentDelegate {
+export class SecuredDesktopAgent extends UnopinionatedDesktopAgent {
 
-    readonly sign: Sign
-    readonly check: Check
-    readonly wrapKey: WrapKey
-    readonly unwrapKey: UnwrapKey
-
-    constructor(d: DesktopAgent, sign: Sign, check: Check, wrapKey: WrapKey, unwrapKey: UnwrapKey) {
-        super(d)
-        this.sign = sign
-        this.check = check
-        this.wrapKey = wrapKey
-        this.unwrapKey = unwrapKey
+    /**
+     * Construct the secured desktop agent decorator.
+     * sign and unwrap key are left for the user to provide, as they may want to perform 
+     * private-key based operations on the server side rather than the client side.
+     * 
+     * @param d Original platform desktop agent instance (perhaps provided by window.fdc3)
+     * @param sign A function that signs a message using a private key.  Can be do
+     * @param resolver A function that allows the agent to resolve a public key URL into a public key (JsonWebKey[])
+     * @param unwrapKey A function used to unwrap a symmetric key encrypted with a public key 
+     */
+    constructor(d: DesktopAgent, sign: Sign, unwrapKey: UnwrapKey, resolver: Resolver) {
+        const csi = new ClientSideImplementation()
+        super(d, sign, csi.initChecker(resolver), csi.initWrapKey(resolver), unwrapKey)
     }
 
-    wrapChannel(c: Channel): Channel {
-        if ((c as any).delegate) {
-            // channel already wrapped 
-            return c
-        } else if ((c.type == 'app') || (c.type == 'user')) {
-            return new SigningChannelDelegate(c, this.sign, this.check)
-        } else if (c.type == 'private') {
-            // private channels both sign and encrypt
-            const channel = c as PrivateChannel
-            const signingChannel = new SigningChannelDelegate(channel, this.sign, this.check)
-            const encryptingChannel = new EncryptingChannelDelegate(signingChannel, this.unwrapKey, this.wrapKey)
-            return encryptingChannel
-        } else {
-            throw new Error("Unknown Channel Type")
-        }
-    }
-
-    wrapIntentResult(r: IntentResult): IntentResult {
-        if (r == undefined) {
-            return undefined
-        } else if ((r.type == 'user') || (r.type == 'private') || (r.type == 'app')) {
-            return this.wrapChannel(r as Channel)
-        } else {
-            // just return context as-is
-            return r
-        }
-    }
-
-
-    broadcast(context: Context): Promise<void> {
-        return signedContext(this.sign, context).then(sc => super.broadcast(sc))
-    }
-
-    raiseIntent(intentName: string, context: Context, a3?: any): Promise<IntentResolution> {
-        return signedContext(this.sign, context, intentName).then(sc => super.raiseIntent(intentName, sc, a3))
-    }
-
-    raiseIntentForContext(context: Context, a2?: any): Promise<IntentResolution> {
-        return signedContext(this.sign, context).then(sc => super.raiseIntentForContext(sc, a2))
-    }
-
-    addContextListener(context: any, handler?: any): Promise<Listener> {
-        const theHandler: ContextHandler = handler ? handler : (context as ContextHandler)
-        const theContextType: string | null = context && handler ? (context as string) : null
-        return super.addContextListener(theContextType, signingContextHandler(this.check, theHandler, () => this.getCurrentChannel()))
-    }
-
-    addIntentListener(intent: string, handler: IntentHandler): Promise<Listener> {
-        return super.addIntentListener(intent, signingIntentHandler(this, handler, intent))
-    }
-
-    createPrivateChannel(): Promise<EncryptingPrivateChannel> {
-        return super.createPrivateChannel() as Promise<EncryptingPrivateChannel>
-    }
 }
