@@ -1,4 +1,4 @@
-import { getClientAPI } from '@kite9/client'
+import { getClientAPI } from 'client'
 
 function createContext(i: number) {
     return {

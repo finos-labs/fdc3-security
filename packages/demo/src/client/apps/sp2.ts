@@ -1,6 +1,6 @@
 import { DesktopAgent, PrivateChannel } from '@finos/fdc3';
-import { getClientAPI } from '@kite9/client'
-import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, ClientSideImplementation, WRAPPING_ALGORITHM_KEY_PARAMS } from '@kite9/fdc3-security'
+import { getClientAPI } from 'client'
+import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, ClientSideImplementation, WRAPPING_ALGORITHM_KEY_PARAMS } from 'fdc3-security'
 
 
 let signingPrivateKey: CryptoKey | null = null

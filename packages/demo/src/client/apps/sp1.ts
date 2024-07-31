@@ -1,8 +1,8 @@
 import { Context, DesktopAgent } from '@finos/fdc3'
-import { getClientAPI } from '@kite9/client'
-import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, WRAPPING_ALGORITHM_KEY_PARAMS, ClientSideImplementation } from '@kite9/fdc3-security'
-import { SYMMETRIC_KEY_REQUEST_CONTEXT } from '@kite9/fdc3-security/src/encryption/SymmetricKeyContext'
-import { ContextMetadataWithAuthenticity } from '@kite9/fdc3-security/src/signing/SigningSupport'
+import { getClientAPI } from 'client'
+import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, WRAPPING_ALGORITHM_KEY_PARAMS, ClientSideImplementation } from 'fdc3-security'
+import { SYMMETRIC_KEY_REQUEST_CONTEXT } from 'fdc3-security/src/encryption/SymmetricKeyContext'
+import { ContextMetadataWithAuthenticity } from 'fdc3-security/src/signing/SigningSupport'
 
 
 let signingPrivateKey: CryptoKey | null = null
