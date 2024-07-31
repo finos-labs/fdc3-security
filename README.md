@@ -105,7 +105,7 @@ sequenceDiagram
 
 ## Installation
 
-### Build And Test The Code
+### Build And Test The Code
 
 From the `javascript/fdc3-security` directory, run:
 
