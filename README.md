@@ -1,20 +1,149 @@
-<<<<<<< HEAD
 ![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)
 
 # FDC3 Security
 
-TODO - Short blurb about what your project does.
+This is a minimal proof-of-concept for FDC3 Security, as proposed by the FDC3 Identity and Security Working Group.
 
-## TODO Installation
-...
+This project currently provides a Javascript implementation of FDC3 Security as a "decorator" for the FDC3 DesktopAgent API, which provides the following functionality:
 
-## TODO Usage example
-...
+1.  Signing of FDC3 Messages (e.g. Broadcast), which allows receipients of broadcasts to verify the sender.
+2.  Encrypted FDC3 Private Channels, which allows for secure communication between two or more FDC3 apps privately without observation of messages from either other apps or the desktop agent.
 
-## Development setup
-...
+## Signing Of FDC3 Messages
+
+When two applications are using the FDC3 Security module, revceivers can check the authenticity of sender's messages by inspecting the `ContextMetadata` object when their `ContextHandler` is called. See: [ContextHandler](https://fdc3.finos.org/docs/api/ref/Types#contexthandler)
+
+FDC3 Security adds the `authenticity` key to the `ContextMetadata` like so:
+
+```
+{
+  "authenticity":  {
+    "verified":true,                  // set to true if the broadcast was signed and  had a signature that could be verified
+    "valid":true,                     // set to true if the public key was able to verify the signature
+    "publicKeyUrl":"/sp1-public-key"  // the URL of the public key used to verify the signature, as given by the sender
+  }
+}
+```
+
+The process works in the following way:
+
+```mermaid
+sequenceDiagram
+    participant AppA
+    participant AppASecurityLayer
+    participant DesktopAgent
+    participant AppBSecurityLayer
+    participant AppBIntentHandler
+    AppA->>AppASecurityLayer: View Orders Intent containing Contact Context
+    note right of AppASecurityLayer: Sign Context with AppA private key
+    AppASecurityLayer->>DesktopAgent: Send Intent with Signed Context
+    DesktopAgent->>AppBSecurityLayer: Deliver Intent
+    note right of AppBSecurityLayer: Verify signature with AppA public key
+    AppBSecurityLayer->>AppBIntentHandler: Deliver Intent with Contact Context and AppA metadata
+```
+
+## Encrypted FDC3 Private Channels
+
+When two applications are using the FDC3 Security module, they can create a private channel between them, which is encrypted with a symmetric key. This allows for secure communication between two or more FDC3 apps privately without observation of messages from either other apps or the desktop agent.
+
+In order to broadcast encrypted messages, the sender (A) creates the private channel and then calls the following function:
+
+```javascript
+privateChannel.setChannelEncryption(true)
+```
+
+This instructs the FDC3 Security module to create a symmetric key for the channel and use it to encrypt all messages sent on that channel.
+
+When a recipient (B) receives an encrypted message on a private channel, it broadcasts a special FDC3 Context object of type `fdc3.security.symmetricKey.request` on the private channel, signed with its own private key.
+
+A handles this context object by setting up a listener like so:
+
+```javascript
+privateChannel.addContextListener(SYMMETRIC_KEY_REQUEST_CONTEXT, async (_context: Context, meta: ContextMetadataWithAuthenticity | undefined) => {
+  if (meta?.authenticity?.verified && meta?.authenticity?.valid) {
+    // inspect the meta.authenticity.publicKeyUrl to ensure you want to communicate with this sender,
+    // before calling:
+    if (trustThisParty(meta.authenticity.publicKeyUrl)) {
+      pc.broadcastKey(meta.authenticity.publicKeyUrl)
+    }
+  }
+})
+```
+
+When A calls `pc.broadcastKey`, it responds by publishing the symmetric key encrypted with the public key of (B), allowing B (and only B) to decrypt the symmetric key and use it to decrypt anything else broadcast on the channel.
+
+This is summarised here:
+
+```mermaid
+sequenceDiagram
+    participant AppA
+    participant AppB
+    AppA->>AppB: View Orders Intent
+    note right of AppB: Generate random symmetric key K
+    note right of AppB: Create private channel C
+    AppB->>AppA: Intent Reply: Private Channel C
+    note left of AppA: Subscribe to Channel C
+    note right of AppB: I have a new order!
+    note right of AppB: Encrypt Order Context with K and sign it with AppB private key
+    AppB->>AppA: Broadcast Encrypted Context
+    note left of AppA: Context is encrypted!
+    note left of AppA: Verify signature of context with AppB public key
+    note left of AppA: Signature valid, I need the channel key
+    AppA->>AppB: Key Request Intent for Channel C
+    note right of AppB: Wrap K with AppA public key
+    AppB->>AppA: K wrapped in AppA public key
+    note left of AppA: Unwrap with AppA private key
+    note left of AppA: I now have K, I can decrypt encrypted contexts on this channel :)
+    note left of AppA: Decrypt encrypted context with K
+    note right of AppB: I have a new order!
+    note right of AppB: Encrypt Order Context with K and sign it with AppB private key
+    AppB->>AppA: Broadcast Encrypted Context
+    note left of AppA: Context is encrypted!
+    note left of AppA: Verify signature of context with AppB public key
+    note left of AppA: Decrypt encrypted context with K
+```
+
+## Installation
+
+### Build And Test The Code
+
+From the `javascript/fdc3-security` directory, run:
+
+```
+npm install
+npm run test  # Runs Cucumber tests and coverage
+npm build
+```
+
+This will build an ES6 module in the `dist` directory.
+
+### Running The Demos
+
+Example javascript code is included in this project in the `/javascript/demo` directory. This includes a simple example of two FDC3 apps communicating with each other using the FDC3 Security module:
+
+- `sp1`: Listens for the `SecretComms` intent to be raised, returning a Private Channel back to raisers and then broadcasting encrypted messages on that channel.
+- `sp2`: Raises the `SecretComms` intent, listens to the private channel and outputs messages in the browser window that it receives.
+
+In order to try this out:
+
+1.  Start the demo applications by running
+
+```
+npm install
+npm run dev
+``
+
+From the `javascript/demo` directory.  This starts a server at `localhost:8095` which serves the demo applications.
+
+2. Install the `javascript/demo/appd.json` directory into your own desktop agent.
+
+3. Start the sp2 app and press the button.
+
+
 ## Roadmap
-...
+
+1.  Java implementation of FDC3 Security to be added.
+2.  Publication into NPM.
 
 ## Contributing
 
@@ -32,124 +161,4 @@ Copyright 2024 FINOS
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
-=======
-# FDC3 For The Web
-
-This is a minimal proof-of-concept for FDC3 For the Web.
-
-## To Run
-
-0.  Prerequisites:
-
-    ```
-    node: v20+
-    yarn v4+
-    ```
-
-1.  From the Command Line:
-
-    ```
-    yarn install
-    yarn workspaces foreach --all install
-    yarn workspaces foreach --all run build
-    cd packages/demo
-    yarn dev
-    ```
-
-2.  Point browser at http://localhost:8080/da/
-
-3.  This is your dummy desktop agent, which has various apps you can launch.
-
-4.  Launch the apps, press the button, watch messages pass between them.
-
-## What This Project Contains
-
-The project is divided into several different yarn workspaces:
-
-- `da-proxy`:
-
-  - `src`: This is an implementation of a client-side, typescript desktop agent proxy that communicates to a server backend using the APIs/JSON Schema defined in [Agent Bridging](https://fdc3.finos.org/docs/next/agent-bridging/spec). It is expected that we would standardize this and add to the FDC3 NPM module.
-  - `test`: This is some cucumber/gherkin tests that exercise the functionality in `src`. These are written to be language-agnostic so that we can use the same Gherkin feature files to test .net, Java, Python APIs too. These can be run with `yarn build`
-
-- `client`: This exports the `getClientAPI()` function which can be used to retrieve a desktop agent API via the web.
-
-- `da-server`:
-
-  - `src`: A minimal implementation of the desktop-agent bridging protocol for handling messages between multiple connected sources.
-  - `test`: This is some cucumber/gherkin tests that exercise the functionality in `src`. These can be run with `yarn build`
-
-- `common` : Common APIs and functionality used by both `client` and `server`
-
-- `demo` : A bare-bones desktop agent implementation with a few apps that use WebFDC3. See: https://static.swimlanes.io/6bb69f2c9acdc0656f5f3b098d40518e.png for how this works. Basically, the implementation here is that it uses iframes approach and a server-side websocket to relay messages.
-
-- `fdc3-workbench`: The FDC3 Workbench app from https://github.com/FDC3/toolbox/workbench, ported to use WebFDC3. Start with `yarn dev` and invoke from `demo`
-
-## Configuring the client
-
-`getClientAPI` (in `index.ts`): Called (with options) by an FDC3 App to retrieve the API. This retrieves `details` from the desktop agent and initialises a `DesktopAgent` API implementation, returning it in a promise. There are various options available:
-
-- `strategies`: This allows plugable strategies for getting the DA. Two exist:
-  - `electron-event` which waits for `window.fdc3` to be set and
-  - `post-message` which fires a post message up to the opening window/iframe (or whatever is set in the `frame` option) asking for details of how to construct a `DesktopAgent` API implementation.
-- `frame` : when _not_ using a loaded iframe, you can begin communicating with a port on a particular frame. By default, opener or window, but you can pick something else if you want.
-
-## Configuring Server
-
-- **For the desktop agent**: `supply` (in `server/supply.ts`): Called by the desktop agent on startup, allows it to supply FDC3 APIs to apps when they ask for one via the `post-message` strategy. This takes the following parameters:
-  - A `checker`, which checks the origin window for the API request. It should be a window that the Desktop Agent is aware of.
-  - A `detailsResolver`s, which returns a map of properties to send to the API requestor (the app) that should be used to instantiate the API.
-  - A `portResolver` which is responsible for providing a `MessagePort` for the server and client to communicate over.
-
-## Notes
-
-- Since this uses Vite, you can modify the code and see it running the browser immediately.
-- This currently only supports FDC3 2.0
-- Also supports the difference between frames and tabs.
-
-## Cross-Origin
-
-- This supports cross-origin when using post message without iframes. (at least on my machine!) you can configure hostnames in `dummy-desktop-agent.ts` to try this out.
-- However, using the iframe mode (you can see this in the demo) will fail as chrome has restricted the SharedWorker when used with iframes (even of the same origin).
-
-## TO-DO
-
-- Fallback strategy in case FDC3 API isn't available (currently promise never resolves)
-- Sanitisation of response from the Desktop Agent
-- Handing of fdc3Ready
-- Handling on intents, open, finishing test cases for `da` / `testing`
-
-## Troubleshooting
-
-- Try removing tsconfig.tsbuildinfo files if you are having trouble building
-
-## Issues To Resolve
-
-- Desktop Agent Briding needs extending with types from `fdc3-common/index.ts`
-- Move exchange into client, instead of common.
-- How does the da-server tell the da-proxy about the channel metadata? We need a message to get the list of user channels from the server.
-- How does the da-server decide on a desktop agent name (maybe it just has one?)
-- AppChecker / AppDetailsResolver / AppPortResolver - this is all too complex.
-  = fdc3Ready timeout
-- get it to work without desktop agent window running
-- use cookie for the da id.
-- add server tests for intent resolution choice
-- test intent resolvers on different domains
-- factor out test codes into module
-- handle setting connected on the server context.
-- canonicalisation of JSON messages (search: abc)
-- wrap intent result is in the wrong place.
-
-## Idea
-
-Do we need to send a post-message to the server, if we have cookies? Couldn't we just hold the DA ID and the
-address of the embed page in the cookie? Problem is, the cookie is scoped to the DA...
-
-## Releasing
-
 ```
-yarn npm login
-yarn workspaces foreach --all version 0.0.10 (or whatever)
-yarn workspaces foreach --all npm publish --access=public
-
-```
->>>>>>> ffw/security-proxy-2
