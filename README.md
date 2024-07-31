@@ -135,9 +135,26 @@ npm run dev
 
 From the `javascript/fdc-security` directory. This starts a server at `localhost:8095` which serves the demo applications.
 
-2. Install the `javascript/fdc3-security/demo/appd.json` directory into your own desktop agent.
+2. Install the `javascript/fdc3-security/demo/appd.json` directory into your own desktop agent (I used `finsemble-seed` and `fdc3-for-the-web`).
 
-3. Start the sp2 app and press the button.
+3. Start both apps sp1 and sp2 app and press the button in sp2.
+
+4. sp2's output looks like this:
+
+````
+# here, it raises the SecretComms intent to sp1 and it's resolved
+
+Got resolution: SecretComms from [object Object]
+
+# sp1 returns a private cahnnel
+Got result: private Private-Channel-Id-d0ee4085-3210-4786-ab05-fb6f8bd76000
+
+# SP1 Sends a demo.counter message on the private channel, but it's encrypted.  After this step, sp2 asks for the channel key.
+Private Channel Message ctx={"type":"demo.counter","__encrypted":{"algorithm":{"name":"AES-GCM","iv":"1bhVVRhuKbd42CNd"},"encoded":"IKQORuRYcEIouyMH+l3GO1MPwPOFvLI1ZKnF3hwpdjxnbhxNLQknEZ8MfX0VZuyUkgxquBVfpddOjI9j9+jXpFyN+43LaiZXzFp0lXEQIshXxADTS4vOF7rC0df1Wwmn/7aW4jTcLaMKeJSkd9j88ajh"}} meta={"source":{"appId":"sp1","instanceId":"fdc3-instanceId-sp1=4424741e-1511-438c-9ffe-1eb8c583f05f"},"authenticity":{"verified":true,"valid":true,"publicKeyUrl":"/sp1-public-key"},"encryption":"cant_decrypt"}
+
+# By the time SP2 sends the second message, SP1 has the channel key, and is able to decrypt the contents of the context (containing id and original fields).  You can also see the source of the message is sp1, and the authenticity is verified and valid.
+Private Channel Message ctx={"type":"demo.counter","id":{"bc":2},"original":{"type":"fdc3.instrument","id":{"isin":"Abc123"}}} meta={"source":{"appId":"sp1","instanceId":"fdc3-instanceId-sp1=4424741e-1511-438c-9ffe-1eb8c583f05f"},"authenticity":{"verified":true,"valid":true,"publicKeyUrl":"/sp1-public-key"},"encryption":"decrypted"}
+```
 
 ### Configuring The Decorator
 
@@ -145,7 +162,7 @@ As described above, the FDC3 Security module is a decorator for the FDC3 Desktop
 
 ```javascript
 const securedDa = new SecuredDesktopAgent(window.fdc3, signingFunction, checkingFunction, wrappingFunction, unwrappingFunction)
-```
+````
 
 TODO: Complete this part.
 
