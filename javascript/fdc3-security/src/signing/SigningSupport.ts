@@ -83,6 +83,7 @@ export function signingContextHandler(check: Check, handler: ContextHandler, cha
                         verified: false,
                         error: e
                     }
+                    return handler(c, m2)
                 })
         } else {
             if (m) {

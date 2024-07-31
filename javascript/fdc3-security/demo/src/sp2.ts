@@ -28,7 +28,6 @@ async function doIt() {
         .then(r => r.json())
         .then(j => setupKeys(j))
         .then(c => {
-            console.log("in here")
             const csi = new ClientSideImplementation()
 
             const resolver: Resolver = (u: string) => {
@@ -38,9 +37,8 @@ async function doIt() {
 
             sfdc3 = new SecuredDesktopAgent(window.fdc3,
                 csi.initSigner(signingPrivateKey as CryptoKey, "/sp2-public-key"),
-                csi.initChecker(resolver),
-                csi.initWrapKey(resolver),
-                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp2-public-key"))
+                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp2-public-key"),
+                resolver)
 
             const log = document.getElementById("log");
             sfdc3.raiseIntent("SecretComms", {
@@ -54,7 +52,7 @@ async function doIt() {
                 reso.getResult().then((result) => {
                     log!!.textContent += `Got result: ${result?.type} ${result?.id}\n`
                     privateChannel = result as PrivateChannel
-                    privateChannel.addContextListener(null, (ctx, meta) => {
+                    privateChannel.addContextListener("demo.counter", (ctx, meta) => {
                         log!!.textContent += `Private Channel Message ctx=${JSON.stringify(ctx)} meta=${JSON.stringify(meta)} \n`;
                     })
                 })

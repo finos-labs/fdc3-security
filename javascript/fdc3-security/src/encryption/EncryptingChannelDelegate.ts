@@ -97,6 +97,8 @@ export class EncryptingChannelDelegate extends ChannelDelegate implements Encryp
                 ...meta
             }
 
+            console.log("Decrypting context handler called")
+
             delete newMeta[ENCRYPTION_STATUS]
 
             const encrypted = context[ENCRYPTION_KEY] as EncryptedContent

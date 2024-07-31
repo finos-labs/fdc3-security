@@ -53,7 +53,7 @@ fdc3Ready().then(() => {
 
                     pc.addContextListener("demo.counter", (ctx: Context, meta: ContextMetadata) => {
                         const msg2 = document.createElement("pre");
-                        msg2.textContent = `Received ${JSON.stringify(ctx)} with meta ${JSON.stringify(meta)}`
+                        msg2.textContent = `I've sent ${JSON.stringify(ctx)} with meta ${JSON.stringify(meta)}`
                         log?.appendChild(msg2)
                     })
 

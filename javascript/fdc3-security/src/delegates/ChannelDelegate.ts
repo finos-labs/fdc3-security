@@ -46,6 +46,7 @@ export class ChannelDelegate implements PrivateChannel {
     }
 
     addContextListener(a1: any, a2?: any): Promise<Listener> {
+        console.log("Adding context listener")
         return this.delegate.addContextListener(a1, a2)
     }
 
