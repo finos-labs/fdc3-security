@@ -141,9 +141,8 @@ From the `javascript/fdc-security` directory. This starts a server at `localhost
 
 4. sp2's output looks like this:
 
-````
+```
 # here, it raises the SecretComms intent to sp1 and it's resolved
-
 Got resolution: SecretComms from [object Object]
 
 # sp1 returns a private cahnnel
@@ -154,22 +153,33 @@ Private Channel Message ctx={"type":"demo.counter","__encrypted":{"algorithm":{"
 
 # By the time SP2 sends the second message, SP1 has the channel key, and is able to decrypt the contents of the context (containing id and original fields).  You can also see the source of the message is sp1, and the authenticity is verified and valid.
 Private Channel Message ctx={"type":"demo.counter","id":{"bc":2},"original":{"type":"fdc3.instrument","id":{"isin":"Abc123"}}} meta={"source":{"appId":"sp1","instanceId":"fdc3-instanceId-sp1=4424741e-1511-438c-9ffe-1eb8c583f05f"},"authenticity":{"verified":true,"valid":true,"publicKeyUrl":"/sp1-public-key"},"encryption":"decrypted"}
+
 ```
+
+
 
 ### Configuring The Decorator
 
 As described above, the FDC3 Security module is a decorator for the FDC3 DesktopAgent API. In order to use it, you need to import the module and then wrap the `DesktopAgent` with the `SecuredDesktopAgent` like so:
 
 ```javascript
-const securedDa = new SecuredDesktopAgent(window.fdc3, signingFunction, checkingFunction, wrappingFunction, unwrappingFunction)
+const securedDa = new SecuredDesktopAgent(window.fdc3, signingFunction, unwrappingFunction, resolver)
 ````
 
-TODO: Complete this part.
+The parameters are as follows:
+
+- `d` Original platform desktop agent instance (perhaps provided by window.fdc3)
+- `sign` A function that signs a message using a private key.  Can be done on the server side if that's what you want.
+- `unwrapKey` A function used to unwrap a symmetric key encrypted with a public key.  Again, since it uses a private key, it can be done server side although the demos do client side unwrapping. 
+- `resolver` A function that allows the agent to resolve a public key URL into a JSON Web Key Set (JWKS) (JsonWebKey[]).
 
 ## Roadmap
 
 1.  Java implementation of FDC3 Security to be added.
 2.  Publication into NPM.
+3.  Fix the remaining cucumber tests.
+4.  Heaed for 100% code coverage.
+5.  OSFF Demo at end of September.
 
 ## Contributing
 
