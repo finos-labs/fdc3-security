@@ -1,4 +1,4 @@
-import { PrivateChannel, fdc3Ready } from '@finos/fdc3';
+import { IntentResolution, PrivateChannel, fdc3Ready } from '@finos/fdc3';
 import { SecuredDesktopAgent, Resolver, SIGNING_ALGORITHM_DETAILS, ClientSideImplementation, WRAPPING_ALGORITHM_KEY_PARAMS } from '../../src/index'
 
 let signingPrivateKey: CryptoKey | null = null
@@ -6,33 +6,17 @@ let unwrappingPrivateKey: CryptoKey | null = null
 let privateChannel: PrivateChannel | null = null
 let sfdc3: SecuredDesktopAgent | null = null
 
+async function setupKeys(j: JsonWebKey[]): Promise<void> {
+    signingPrivateKey = await crypto.subtle.importKey("jwk", j[0], SIGNING_ALGORITHM_DETAILS, true, ["sign"])
+    unwrappingPrivateKey = await crypto.subtle.importKey("jwk", j[1], WRAPPING_ALGORITHM_KEY_PARAMS, true, ["unwrapKey"])
+}
+
 fdc3Ready().then(() => {
 
     console.log("FDC3 is ready")
 
-    async function setupKeys(j: JsonWebKey[]): Promise<void> {
-        signingPrivateKey = await crypto.subtle.importKey("jwk", j[0], SIGNING_ALGORITHM_DETAILS, true, ["sign"])
-        unwrappingPrivateKey = await crypto.subtle.importKey("jwk", j[1], WRAPPING_ALGORITHM_KEY_PARAMS, true, ["unwrapKey"])
-    }
-
-    fetch('/sp2-private-key')
-        .then(r => r.json())
-        .then(j => setupKeys(j))
-        .then(c => {
-            const csi = new ClientSideImplementation()
-
-            const resolver: Resolver = (u: string) => {
-                return fetch(u)
-                    .then(r => r.json())
-            }
-
-            sfdc3 = new SecuredDesktopAgent(c,
-                csi.initSigner(signingPrivateKey as CryptoKey, "/sp2-public-key"),
-                csi.initChecker(resolver),
-                csi.initWrapKey(resolver),
-                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp2-public-key"))
-        })
 })
+
 
 
 /**
@@ -40,23 +24,42 @@ fdc3Ready().then(() => {
  */
 async function doIt() {
 
-    const log = document.getElementById("log");
-    const reso = await sfdc3.raiseIntent("SecretComms", {
-        type: "fdc3.instrument",
-        id: {
-            isin: "Abc123"
-        }
-    })
+    fetch('/sp2-private-key')
+        .then(r => r.json())
+        .then(j => setupKeys(j))
+        .then(c => {
+            console.log("in here")
+            const csi = new ClientSideImplementation()
 
-    log!!.textContent = `Got resolution: ${reso.intent} from ${reso.source}\n`
-    const result = await reso.getResult()
-    log!!.textContent += `Got result: ${result?.type} ${result?.id}\n`
+            const resolver: Resolver = (u: string) => {
+                return fetch(u)
+                    .then(r => r.json())
+            }
 
-    privateChannel = result as PrivateChannel
-    privateChannel.addContextListener(null, (ctx, meta) => {
-        log!!.textContent += `Private Channel Message ctx=${JSON.stringify(ctx)} meta=${JSON.stringify(meta)} \n`;
-    })
+            sfdc3 = new SecuredDesktopAgent(window.fdc3,
+                csi.initSigner(signingPrivateKey as CryptoKey, "/sp2-public-key"),
+                csi.initChecker(resolver),
+                csi.initWrapKey(resolver),
+                csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp2-public-key"))
 
+            const log = document.getElementById("log");
+            sfdc3.raiseIntent("SecretComms", {
+                type: "fdc3.instrument",
+                id: {
+                    isin: "Abc123"
+                }
+            }).then((reso: IntentResolution) => {
+                log!!.textContent = `Got resolution: ${reso.intent} from ${reso.source}\n`
+
+                reso.getResult().then((result) => {
+                    log!!.textContent += `Got result: ${result?.type} ${result?.id}\n`
+                    privateChannel = result as PrivateChannel
+                    privateChannel.addContextListener(null, (ctx, meta) => {
+                        log!!.textContent += `Private Channel Message ctx=${JSON.stringify(ctx)} meta=${JSON.stringify(meta)} \n`;
+                    })
+                })
+            })
+        })
 }
 
 

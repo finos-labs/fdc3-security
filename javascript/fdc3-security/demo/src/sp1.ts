@@ -24,7 +24,7 @@ fdc3Ready().then(() => {
 
             const csi = new ClientSideImplementation()
 
-            return new SecuredDesktopAgent(c,
+            return new SecuredDesktopAgent(window.fdc3,
                 csi.initSigner(signingPrivateKey as CryptoKey, "/sp1-public-key"),
                 csi.initUnwrapKey(unwrappingPrivateKey as CryptoKey, "/sp1-public-key"),
                 resolver)
